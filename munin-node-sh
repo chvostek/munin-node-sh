@@ -1,0 +1,62 @@
+#!/bin/sh
+
+echo "# munin node at `hostname`"
+
+plugins="/usr/local/etc/munin/plugins/"
+
+version="unknown"
+
+unknown() {
+  echo "# Unknown command. Try cap, list, nodes, config, fetch, version or quit"
+}
+
+while read command arg; do
+  command="${command%}"; arg="${arg%}"
+  logger "command=$command arg=$arg"
+  case "$command" in
+    cap)
+      echo "cap multigraph dirtyconfig"
+      ;;
+    list)
+      # list
+      cd "$plugins" && echo *
+      ;;
+    nodes)
+      # list available nodes
+      hostname 
+      echo "."
+      ;;
+    config*)
+      # run plugin config
+      if [ ! -f "$plugins/$arg" ]; then
+        echo "# Unknown service"
+        echo "."
+	continue
+      fi
+      plugin="${arg%% *}"
+      "$plugins/$plugin" config
+      echo "."
+      ;;
+    fetch*)
+      # fetch values
+      plugin="${arg%% *}"
+      if [ ! -f "$plugins/$plugin" ]; then
+        echo "# Unknown service"
+        echo "."
+	continue
+      fi
+      "$plugins/$plugin"
+      echo "."
+      ;;
+    version)
+      echo "munin-node-sh on `hostname -s` version: $version"
+      ;;
+    quit)
+      break
+      ;;
+    *)
+      unknown
+      ;;
+  esac
+done
+
