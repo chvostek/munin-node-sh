@@ -6,12 +6,16 @@ plugins="/usr/local/etc/munin/plugins/"
 
 version="unknown"
 
+unset MUNIN_CAP_MULTIGRAPH MUNIN_CAP_DIRTYCONFIG
+
 while read command arg; do
   command="${command%}"; arg="${arg%}"
   logger "command=$command arg=$arg"
   case "$command" in
+    cap.*multigraph)  MUNIN_CAP_MULTIGRAPH=1 ;&
+    cap.*dirtyconfig) MUNIN_CAP_DIRTYCONFIG=1 ;&
     cap)
-      echo "cap multigraph dirtyconfig"
+      echo "${MUNIN_CAP_MULTIGRAPH:+multigraph} ${MUNIN_CAP_DIRTYCONFIG:+dirtyconfig}"
       ;;
     list)
       # list
