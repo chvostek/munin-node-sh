@@ -6,10 +6,6 @@ plugins="/usr/local/etc/munin/plugins/"
 
 version="unknown"
 
-unknown() {
-  echo "# Unknown command. Try cap, list, nodes, config, fetch, version or quit"
-}
-
 while read command arg; do
   command="${command%}"; arg="${arg%}"
   logger "command=$command arg=$arg"
@@ -55,7 +51,7 @@ while read command arg; do
       break
       ;;
     *)
-      unknown
+      echo "# Unknown command. Try cap, list, nodes, config, fetch, version or quit"
       ;;
   esac
 done
