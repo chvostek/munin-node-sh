@@ -7,7 +7,7 @@ Munin-node-sh is not associated with or part of the Munin project.
 Munin-node-sh provides a number of plugins internally:
 
 * df
-* zfsdf
+* zfslist
 * cpu
 * if_
 * if_err_
@@ -27,7 +27,7 @@ Munin-node-sh has pretty light-weight requirements.  No build should be required
 Dependency | Services
 ---- | ----
 `smartctl` | disk temperature
-`zfs` | zfsdf, for dataset usage (like df but better)
+`zfs` | zfslist, for dataset usage (like df but better)
 `zpool` | IO statistics for a given ZFS pool
 
 ## Provisos:

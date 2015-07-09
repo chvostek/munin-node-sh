@@ -30,9 +30,9 @@ function fetch_df() {
     echo "${fs}.value $cap"
   done
 }
-function config_zfsdf() {
+function config_zfslist() {
 }
-function fetch_zfsdf() {
+function fetch_zfslist() {
 }
 function config_cpu() {
 }
@@ -103,7 +103,7 @@ while read command arg; do
     config*)
       # run plugin config
       case "$arg" in
-        df|zfsdf|cpu|if_*|load|memory|swap|processes|netstat|uptime)
+        df|zfslist|cpu|if_*|load|memory|swap|processes|netstat|uptime)
           config_$arg
           if [ $MUNIN_CAP_MULTIGRAPH = 1 ]; then
             fetch_$arg
