@@ -1,10 +1,84 @@
 #!/bin/sh
 
+function config_df() {
+  cat <<-EOT
+    graph_title Filesystem usage in percent
+    graph_args --upper-limit 100 -l 0
+    graph_vlabel %
+    graph_category disk
+    graph_scale no
+    graph_info This graph shows disk usage on the machine.
+    EOT
+  df | sed 1d | while read fs size used avail cap mountpoint; do
+    cap="${cap%%%}"
+    cat <<-EOT
+      ${fs}.label $fs
+      ${fs}.info $fs
+      ${fs}.warning ${df_warning:-92}
+      ${fs}.critical ${df_critical:-98}
+      EOT
+  done
+}
+function fetch_df() {
+  for fs in $(df -P | grep '^/' | sed '/\/[a-z0-9]*$/!d;s/.* \([a-z0-9\/]\{1,\}\)$/\1/g')
+  do
+    PINFO=$(df -P $fs | tail -1);
+    PNAME=$(echo $PINFO | cut -d\  -f1 | sed 's/[\/.-]/_/g')
+    echo "$PNAME.value" $(echo $PINFO | cut -f5 -d\  | sed -e 's/\%//g')
+  done
+  df | sed 1d | while read fs size used avail cap mountpoint; do
+    echo "${fs}.value $cap"
+  done
+}
+function config_zfsdf() {
+}
+function fetch_zfsdf() {
+}
+function config_cpu() {
+}
+function fetch_cpu() {
+}
+function config_if_() {
+}
+function fetch_if_() {
+}
+function config_if_err_() {
+}
+function fetch_if_err_() {
+}
+function config_load() {
+}
+function fetch_load() {
+}
+function config_memory() {
+}
+function fetch_memory() {
+}
+function config_swap() {
+}
+function fetch_swap() {
+}
+function config_processes() {
+}
+function fetch_processes() {
+}
+function config_netstat() {
+}
+function fetch_netstat() {
+}
+function config_uptime() {
+}
+function fetch_uptime() {
+}
+
+
 echo "# munin node at `hostname`"
 
+# Defaults
 plugins="/usr/local/etc/munin/plugins/"
-
 version="unknown"
+
+# TODO: Find our config file and slurp it in
 
 unset MUNIN_CAP_MULTIGRAPH MUNIN_CAP_DIRTYCONFIG
 
@@ -23,19 +97,29 @@ while read command arg; do
       ;;
     nodes)
       # list available nodes
-      hostname 
+      hostname
       echo "."
       ;;
     config*)
       # run plugin config
-      if [ ! -f "$plugins/$arg" ]; then
-        echo "# Unknown service"
-        echo "."
-	continue
-      fi
-      plugin="${arg%% *}"
-      "$plugins/$plugin" config
-      echo "."
+      case "$arg" in
+        df|zfsdf|cpu|if_*|load|memory|swap|processes|netstat|uptime)
+          config_$arg
+          if [ $MUNIN_CAP_MULTIGRAPH = 1 ]; then
+            fetch_$arg
+          fi
+          ;;
+        *)
+          if [ ! -f "$plugins/$arg" ]; then
+            echo "# Unknown service"
+            echo "."
+            continue
+          fi
+          plugin="${arg%% *}"
+          "$plugins/$plugin" config
+          echo "."
+          ;;
+      esac
       ;;
     fetch*)
       # fetch values
@@ -43,7 +127,7 @@ while read command arg; do
       if [ ! -f "$plugins/$plugin" ]; then
         echo "# Unknown service"
         echo "."
-	continue
+        continue
       fi
       "$plugins/$plugin"
       echo "."

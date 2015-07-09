@@ -1,7 +1,34 @@
 # This is munin-node-sh
-It's a munin-node alternative written entirely in shell, with minimal dependencies.
+
+It's a munin-node alternative written entirely in shell, with minimal dependencies.  *It doesn't work yet.*  Or at least, it may not.  YMMV.
 
 Munin-node-sh is not associated with or part of the Munin project.
+
+Munin-node-sh provides a number of plugins internally:
+
+* df
+* zfsdf
+* cpu
+* if_
+* if_err_
+* load
+* memory
+* swap
+* processes
+* netstat
+* uptime
+
+Other plugins may be provided via the standard plugin directory ... the location of which is configurable.
+
+## Requirements:
+
+Munin-node-sh has pretty light-weight requirements.  No build should be required.  Available plugins are determined by configuration and the set of dependencies that are found.  For example:
+
+Dependency | Services
+---- | ----
+`smartctl` | disk temperature
+`zfs` | zfsdf, for dataset usage (like df but better)
+`zpool` | IO statistics for a given ZFS pool
 
 ## Provisos:
 
