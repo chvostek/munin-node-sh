@@ -1,6 +1,7 @@
+#!/usr/local/bin/bash
 #!/bin/sh
 
-function config_df() {
+config_df() {
   cat <<-EOT
     graph_title Filesystem usage in percent
     graph_args --upper-limit 100 -l 0
@@ -8,67 +9,113 @@ function config_df() {
     graph_category disk
     graph_scale no
     graph_info This graph shows disk usage on the machine.
-    EOT
-  df | sed 1d | while read fs size used avail cap mountpoint; do
-    cap="${cap%%%}"
+EOT
+  df -l | sed 1d | while read fs size used avail cap mountpoint; do
     cat <<-EOT
       ${fs}.label $fs
       ${fs}.info $fs
       ${fs}.warning ${df_warning:-92}
       ${fs}.critical ${df_critical:-98}
-      EOT
+EOT
   done
 }
-function fetch_df() {
-  for fs in $(df -P | grep '^/' | sed '/\/[a-z0-9]*$/!d;s/.* \([a-z0-9\/]\{1,\}\)$/\1/g')
-  do
-    PINFO=$(df -P $fs | tail -1);
-    PNAME=$(echo $PINFO | cut -d\  -f1 | sed 's/[\/.-]/_/g')
-    echo "$PNAME.value" $(echo $PINFO | cut -f5 -d\  | sed -e 's/\%//g')
-  done
-  df | sed 1d | while read fs size used avail cap mountpoint; do
-    echo "${fs}.value $cap"
+fetch_df() {
+  df -l | while read fs size used avail cap mountpoint; do
+    case "$cap" in
+      *%) echo "${fs}.value ${cap%%%}" ;;
+    esac
   done
 }
-function config_zfslist() {
+
+config_zfslist() {
+  cat <<-EOT
+    graph_title ZFS dataset usage in percent
+    graph_args --upper-limit 100 -l 0
+    graph_vlabel %
+    graph_category disk
+    graph_scale no
+    graph_info This graph shows dataset usage on the machine.
+EOT
+  zfs list -H -o space,quota,refquota,reserv,refreserv \
+  | while IFS='\t' read name avail used usedsnap usedds usedrefreserv usedchild quota refquota reserv refreserv; do
+    cat <<-EOT
+      ${name}.label $name
+      ${name}.info $name
+      ${name}.warning ${zfslist_warning:-92}
+      ${name}.critical ${zfslist_critical:-98}
+EOT
+  done
 }
-function fetch_zfslist() {
+fetch_zfslist() {
+  #for pool in $(/sbin/zpool list -Hp); do
+  zfs list -H -o space,quota,refquota,reserv,refreserv \
+  | while IFS=$'\t' read name avail used usedsnap usedds usedrefreserv usedchild quota refquota reserv refreserv; do
+    case "$refquota" in
+      none) ;;
+      *) quota="$refquota" ;;
+    esac
+    if [ "$quota" = none ]; then
+      max="$quota"
+    else
+      max="$(/sbin/zpool list -Hp ${name%%/*}...)"
+    fi
+    echo "${name}.value $cap"
+  done
 }
-function config_cpu() {
+
+config_cpu() {
+  echo ""
 }
-function fetch_cpu() {
+fetch_cpu() {
+  echo ""
 }
-function config_if_() {
+config_if_() {
+  echo ""
 }
-function fetch_if_() {
+fetch_if_() {
+  echo ""
 }
-function config_if_err_() {
+config_if_err_() {
+  echo ""
 }
-function fetch_if_err_() {
+fetch_if_err_() {
+  echo ""
 }
-function config_load() {
+config_load() {
+  echo ""
 }
-function fetch_load() {
+fetch_load() {
+  echo ""
 }
-function config_memory() {
+config_memory() {
+  echo ""
 }
-function fetch_memory() {
+fetch_memory() {
+  echo ""
 }
-function config_swap() {
+config_swap() {
+  echo ""
 }
-function fetch_swap() {
+fetch_swap() {
+  echo ""
 }
-function config_processes() {
+config_processes() {
+  echo ""
 }
-function fetch_processes() {
+fetch_processes() {
+  echo ""
 }
-function config_netstat() {
+config_netstat() {
+  echo ""
 }
-function fetch_netstat() {
+fetch_netstat() {
+  echo ""
 }
-function config_uptime() {
+config_uptime() {
+  echo ""
 }
-function fetch_uptime() {
+fetch_uptime() {
+  echo ""
 }
 
 
@@ -88,12 +135,13 @@ while read command arg; do
   case "$command" in
     cap.*multigraph)  MUNIN_CAP_MULTIGRAPH=1 ;&
     cap.*dirtyconfig) MUNIN_CAP_DIRTYCONFIG=1 ;&
-    cap)
+    cap*)
       echo "${MUNIN_CAP_MULTIGRAPH:+multigraph} ${MUNIN_CAP_DIRTYCONFIG:+dirtyconfig}"
       ;;
     list)
       # list
-      cd "$plugins" && echo *
+      space=""
+      cd "$plugins" && for plugin in *; do printf "%s%s" "$space" "$plugin"; space=" "; done; echo ""
       ;;
     nodes)
       # list available nodes
@@ -103,9 +151,16 @@ while read command arg; do
     config*)
       # run plugin config
       case "$arg" in
-        df|zfslist|cpu|if_*|load|memory|swap|processes|netstat|uptime)
+        if_*)
+          interface="${arg##if_}"
+          config_if_ "$interface"
+          if [ "$MUNIN_CAP_DIRTYCONFIG" = 1 ]; then
+            fetch_if_ "$interface"
+          fi
+          ;;
+        df|zfslist|cpu|load|memory|swap|processes|netstat|uptime)
           config_$arg
-          if [ $MUNIN_CAP_MULTIGRAPH = 1 ]; then
+          if [ "$MUNIN_CAP_DIRTYCONFIG" = 1 ]; then
             fetch_$arg
           fi
           ;;
@@ -117,19 +172,33 @@ while read command arg; do
           fi
           plugin="${arg%% *}"
           "$plugins/$plugin" config
+          if [ "$MUNIN_CAP_DIRTYCONFIG" = 1 ]; then
+            "$plugins/$plugin"
+          fi
           echo "."
           ;;
       esac
       ;;
     fetch*)
       # fetch values
-      plugin="${arg%% *}"
-      if [ ! -f "$plugins/$plugin" ]; then
-        echo "# Unknown service"
-        echo "."
-        continue
-      fi
-      "$plugins/$plugin"
+      case "$arg" in
+        if_*)
+          interface="${arg##if_}"
+          config_if_ "$interface"
+          ;;
+        df|zfslist|cpu|load|memory|swap|processes|netstat|uptime)
+            fetch_$arg
+          ;;
+        *)
+          plugin="${arg%% *}"
+          if [ ! -f "$plugins/$plugin" ]; then
+            echo "# Unknown service"
+            echo "."
+            continue
+          fi
+          "$plugins/$plugin"
+          ;;
+      esac
       echo "."
       ;;
     version)
